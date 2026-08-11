@@ -43,6 +43,26 @@ node scripts/spec-to-pdf.mjs \
   ./output/sample-api.pdf
 ```
 
+With the optional TDC NET profile:
+
+```bash
+node scripts/spec-to-pdf.mjs \
+  --profile tdc-net \
+  --logo-path ./assets/tdc-net-logo.png \
+  --title "Order Cache API" \
+  --subtitle "API Specification" \
+  ./spec-drop/yaml/net-ordercache.yaml \
+  ./spec-drop/pdf/net-ordercache.pdf
+```
+
+For the drop-folder script, set environment variables:
+
+```bash
+SPEC_PROFILE=tdc-net \
+SPEC_LOGO_PATH=./assets/tdc-net-logo.png \
+./scripts/process-spec-drop.sh
+```
+
 ## What it does
 
 - reads an OpenAPI YAML/JSON file

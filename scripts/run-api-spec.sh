@@ -13,6 +13,7 @@ Example:
   ./scripts/run-api-spec.sh \
     ./examples/sample-api.yaml \
     ./output/sample-api.pdf \
+    --profile tdc-net \
     --title "Sample API" \
     --subtitle "API Specification" \
     --system "Sample Platform" \

@@ -66,6 +66,16 @@ Generate PDF with cover metadata:
   --version "v1.0"
 ```
 
+Use the optional TDC NET profile:
+
+```bash
+SPEC_PROFILE=tdc-net \
+SPEC_LOGO_PATH=./assets/tdc-net-logo.png \
+./scripts/process-spec-drop.sh
+```
+
+The profile restores the TDC NET cover metadata and the TDC-style interaction/security/front-matter text. The logo file is intentionally supplied by path, so you can keep branded assets local if needed.
+
 Generate HTML:
 
 ```bash
@@ -82,4 +92,4 @@ Set `CHROME_BIN` if the renderer cannot find your browser automatically.
 
 ## Public-Safe Scope
 
-This repo is meant to be reusable scaffolding. Keep real customer specs, private platform names, internal folder IDs, credentials, generated production PDFs, and organization-specific process notes out of it.
+This repo is meant to be reusable scaffolding. Keep real customer specs, internal folder IDs, credentials, generated production PDFs, and sensitive organization-specific process notes out of it.

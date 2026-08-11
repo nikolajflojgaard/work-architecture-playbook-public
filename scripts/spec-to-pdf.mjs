@@ -39,6 +39,7 @@ function parseArgs(rawArgs) {
   const options = {
     htmlOnly: false,
     titlePage: true,
+    profile: '',
     title: '',
     subtitle: '',
     system: '',
@@ -53,6 +54,7 @@ function parseArgs(rawArgs) {
     const arg = rawArgs[i];
     if (arg === '--html') options.htmlOnly = true;
     else if (arg === '--no-title-page') options.titlePage = false;
+    else if (arg === '--profile') options.profile = rawArgs[++i] || '';
     else if (arg === '--title') options.title = rawArgs[++i] || '';
     else if (arg === '--subtitle') options.subtitle = rawArgs[++i] || '';
     else if (arg === '--system') options.system = rawArgs[++i] || '';
@@ -63,7 +65,22 @@ function parseArgs(rawArgs) {
     else options.positional.push(arg);
   }
 
-  return options;
+  return applyProfileDefaults(options);
+}
+
+function applyProfileDefaults(options) {
+  if (options.profile !== 'tdc-net') return options;
+
+  return {
+    ...options,
+    brandName: options.brandName || 'TDC NET',
+    system: options.system || 'TDC NET',
+    logoPath: options.logoPath || (existsSync('./assets/tdc-net-logo.png') ? './assets/tdc-net-logo.png' : ''),
+  };
+}
+
+function isTdcNetProfile(options) {
+  return options.profile === 'tdc-net';
 }
 
 function escapeHtml(value = '') {
@@ -191,7 +208,11 @@ function buildDefaultDocument(meta, options) {
     {
       number: '3.1',
       title: 'Security setup',
-      paragraphs: ['Document the authentication, authorization, and data-protection requirements for the target environment.'],
+      paragraphs: [
+        isTdcNetProfile(options)
+          ? 'Security follows the getting-started model for TDCNET API Gateway security and Ping. A client creates and signs a JSON Web Token (JWT), exchanges it for an access token, and then uses that access token when calling the service.'
+          : 'Document the authentication, authorization, and data-protection requirements for the target environment.',
+      ],
     },
     {
       number: '3.2',
@@ -200,8 +221,12 @@ function buildDefaultDocument(meta, options) {
     },
     {
       number: '3.3',
-      title: 'Data boundaries',
-      paragraphs: ['Document any tenant, customer, environment, or access-boundary constraints that apply to this API.'],
+      title: isTdcNetProfile(options) ? 'Chinese walls' : 'Data boundaries',
+      paragraphs: [
+        isTdcNetProfile(options)
+          ? 'TDC NET ensures that only subscribers related to the individual ISP can be operated through the relevant API services.'
+          : 'Document any tenant, customer, environment, or access-boundary constraints that apply to this API.',
+      ],
     },
   ];
 
@@ -222,7 +247,7 @@ function buildDefaultDocument(meta, options) {
   const toc = [
     { number: '1', title: 'Change log', page: '2', level: 1 },
     { number: '2', title: 'Overview', page: '3', level: 1 },
-    { number: '3', title: 'API interaction model', page: '4', level: 1 },
+    { number: '3', title: isTdcNetProfile(options) ? 'Interaction with TDC NET API' : 'API interaction model', page: '4', level: 1 },
     ...interactionSubsections.map((section) => ({ number: section.number, title: section.title, page: '4', level: 2 })),
     { number: '4', title: 'The specific API', page: '5', level: 1 },
     ...endpointSubsections.map((section) => ({ number: section.number, title: section.title, page: '5', level: 2 })),
@@ -247,7 +272,7 @@ function buildDefaultDocument(meta, options) {
       },
       {
         number: '3',
-        title: 'API interaction model',
+        title: isTdcNetProfile(options) ? 'Interaction with TDC NET API' : 'API interaction model',
         subsections: interactionSubsections,
       },
       {
