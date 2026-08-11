@@ -1,0 +1,15 @@
+{
+  "name": "openapi-spec-drop",
+  "private": false,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "spec:html": "node scripts/spec-to-pdf.mjs --html",
+    "spec:pdf": "node scripts/spec-to-pdf.mjs",
+    "test:spec-pdf": "node scripts/spec-to-pdf.mjs ./examples/sample-api.yaml ./output/sample-api.pdf"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.46.1",
+    "js-yaml": "^5.2.3"
+  }
+}

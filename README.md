@@ -1,0 +1,85 @@
+# OpenAPI Spec Drop
+
+Public, generic version of the architecture playbook's OpenAPI-to-PDF workflow.
+
+This repo is intentionally small:
+
+- place OpenAPI YAML/JSON files in `spec-drop/yaml/`
+- run the drop-folder script
+- get generated PDFs in `spec-drop/pdf/`
+
+It does not include private working documents, external-file automation, company-specific examples, generated customer artifacts, or branded assets.
+
+## Quick Start
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Generate a sample PDF:
+
+```bash
+npm run spec:pdf -- ./examples/sample-api.yaml ./output/sample-api.pdf
+```
+
+Use the drop folder:
+
+```bash
+cp ./examples/sample-api.yaml ./spec-drop/yaml/sample-api.yaml
+./scripts/process-spec-drop.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .\examples\sample-api.yaml .\spec-drop\yaml\sample-api.yaml
+.\scripts\process-spec-drop.ps1
+```
+
+## Folder Layout
+
+- `examples/` - generic sample OpenAPI files
+- `spec-drop/yaml/` - put input specs here
+- `spec-drop/pdf/` - generated PDFs land here
+- `scripts/` - renderer and helper scripts
+- `templates/` - lightweight architecture/API design templates
+
+## Direct Commands
+
+Generate PDF:
+
+```bash
+./scripts/run-api-spec.sh ./examples/sample-api.yaml ./output/sample-api.pdf
+```
+
+Generate PDF with cover metadata:
+
+```bash
+./scripts/run-api-spec.sh \
+  ./examples/sample-api.yaml \
+  ./output/sample-api.pdf \
+  --title "Sample API" \
+  --subtitle "API Specification" \
+  --system "Sample Platform" \
+  --version "v1.0"
+```
+
+Generate HTML:
+
+```bash
+npm run spec:html -- ./examples/sample-api.yaml ./output/sample-api.html
+```
+
+## Requirements
+
+- Node.js
+- npm
+- Google Chrome, Microsoft Edge, or Chromium for PDF generation
+
+Set `CHROME_BIN` if the renderer cannot find your browser automatically.
+
+## Public-Safe Scope
+
+This repo is meant to be reusable scaffolding. Keep real customer specs, private platform names, internal folder IDs, credentials, generated production PDFs, and organization-specific process notes out of it.

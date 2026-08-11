@@ -1,0 +1,12 @@
+node_modules/
+.tmp/
+.runtime/
+.DS_Store
+*.log
+coverage/
+output/*.pdf
+output/*.html
+spec-drop/pdf/*
+spec-drop/yaml/*
+!spec-drop/pdf/.gitkeep
+!spec-drop/yaml/.gitkeep
