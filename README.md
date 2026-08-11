@@ -44,6 +44,8 @@ Copy-Item .\examples\sample-api.yaml .\spec-drop\yaml\sample-api.yaml
 - `spec-drop/yaml/` - put input specs here
 - `spec-drop/pdf/` - generated PDFs land here
 - `scripts/` - renderer and helper scripts
+- `profiles/` - optional rendering profiles such as `tdc-net`
+- `assets/` - optional logo/brand assets used by profiles
 - `templates/` - lightweight architecture/API design templates
 
 ## Direct Commands
@@ -69,12 +71,14 @@ Generate PDF with cover metadata:
 Use the optional TDC NET profile:
 
 ```bash
-SPEC_PROFILE=tdc-net \
-SPEC_LOGO_PATH=./assets/tdc-net-logo.png \
-./scripts/process-spec-drop.sh
+SPEC_PROFILE=tdc-net ./scripts/process-spec-drop.sh
 ```
 
-The profile restores the TDC NET cover metadata and the TDC-style interaction/security/front-matter text. The logo file is intentionally supplied by path, so you can keep branded assets local if needed.
+The profile uses:
+
+- `profiles/tdc-net.json` for TDC NET metadata and front-matter text
+- `assets/tdc-net-logo.png` for the cover logo
+- `templates/tdc-net-api-spec-template.yaml` as a visible YAML/front-matter template
 
 Generate HTML:
 
@@ -92,4 +96,4 @@ Set `CHROME_BIN` if the renderer cannot find your browser automatically.
 
 ## Public-Safe Scope
 
-This repo is meant to be reusable scaffolding. Keep real customer specs, internal folder IDs, credentials, generated production PDFs, and sensitive organization-specific process notes out of it.
+This repo is meant to be reusable scaffolding. Keep internal folder IDs, credentials, generated production PDFs, and sensitive organization-specific process notes out of it.

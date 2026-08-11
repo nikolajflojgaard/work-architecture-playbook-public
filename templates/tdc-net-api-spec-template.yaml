@@ -1,0 +1,79 @@
+openapi: 3.0.3
+info:
+  title: Example TDC NET API
+  version: 1.0.0
+  description: Replace this with the API-specific overview.
+servers:
+  - url: https://api.example.com
+x-document:
+  toc:
+    - number: "1"
+      title: Change log
+      page: "2"
+      level: 1
+    - number: "2"
+      title: Overview
+      page: "3"
+      level: 1
+    - number: "3"
+      title: Interaction with TDC NET API
+      page: "4"
+      level: 1
+    - number: "3.1"
+      title: Security setup
+      page: "4"
+      level: 2
+    - number: "3.2"
+      title: Documentation
+      page: "4"
+      level: 2
+    - number: "3.3"
+      title: Chinese walls
+      page: "4"
+      level: 2
+    - number: "4"
+      title: The specific API
+      page: "5"
+      level: 1
+    - number: "5"
+      title: Attachments
+      page: "6"
+      level: 1
+  sections:
+    - number: "1"
+      title: Change log
+      table:
+        columns:
+          - Version
+          - Date
+          - Description
+        rows:
+          - ["v1.0", "YYYY-MM-DD", "Initial version"]
+    - number: "2"
+      title: Overview
+      paragraphs:
+        - Replace this with a plain-language overview of the API.
+    - number: "3"
+      title: Interaction with TDC NET API
+      subsections:
+        - number: "3.1"
+          title: Security setup
+          paragraphs:
+            - Security follows the getting-started model for TDCNET API Gateway security and Ping. A client creates and signs a JSON Web Token (JWT), exchanges it for an access token, and then uses that access token when calling the service.
+        - number: "3.2"
+          title: Documentation
+          paragraphs:
+            - The OpenAPI file remains the technical source of truth. This PDF is the human-readable review artifact generated from that contract.
+        - number: "3.3"
+          title: Chinese walls
+          paragraphs:
+            - TDC NET ensures that only subscribers related to the individual ISP can be operated through the relevant API services.
+    - number: "4"
+      title: The specific API
+      paragraphs:
+        - Replace this section with the API-specific operations, endpoint purpose, and payload notes.
+    - number: "5"
+      title: Attachments
+      paragraphs:
+        - Replace this section with request and response examples or references.
+paths: {}

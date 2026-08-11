@@ -48,7 +48,6 @@ With the optional TDC NET profile:
 ```bash
 node scripts/spec-to-pdf.mjs \
   --profile tdc-net \
-  --logo-path ./assets/tdc-net-logo.png \
   --title "Order Cache API" \
   --subtitle "API Specification" \
   ./spec-drop/yaml/net-ordercache.yaml \
@@ -58,10 +57,10 @@ node scripts/spec-to-pdf.mjs \
 For the drop-folder script, set environment variables:
 
 ```bash
-SPEC_PROFILE=tdc-net \
-SPEC_LOGO_PATH=./assets/tdc-net-logo.png \
-./scripts/process-spec-drop.sh
+SPEC_PROFILE=tdc-net ./scripts/process-spec-drop.sh
 ```
+
+The profile is visible in `profiles/tdc-net.json`, and the matching reusable YAML/front-matter template is `templates/tdc-net-api-spec-template.yaml`.
 
 ## What it does
 

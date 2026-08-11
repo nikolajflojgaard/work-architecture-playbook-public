@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -47,6 +47,10 @@ function parseArgs(rawArgs) {
     brandName: '',
     logoPath: '',
     date: '',
+    interactionTitle: '',
+    securityText: '',
+    dataBoundaryTitle: '',
+    dataBoundaryText: '',
     positional: [],
   };
 
@@ -62,6 +66,10 @@ function parseArgs(rawArgs) {
     else if (arg === '--brand-name') options.brandName = rawArgs[++i] || '';
     else if (arg === '--logo-path') options.logoPath = rawArgs[++i] || '';
     else if (arg === '--date') options.date = rawArgs[++i] || options.date;
+    else if (arg === '--interaction-title') options.interactionTitle = rawArgs[++i] || '';
+    else if (arg === '--security-text') options.securityText = rawArgs[++i] || '';
+    else if (arg === '--data-boundary-title') options.dataBoundaryTitle = rawArgs[++i] || '';
+    else if (arg === '--data-boundary-text') options.dataBoundaryText = rawArgs[++i] || '';
     else options.positional.push(arg);
   }
 
@@ -69,18 +77,21 @@ function parseArgs(rawArgs) {
 }
 
 function applyProfileDefaults(options) {
-  if (options.profile !== 'tdc-net') return options;
+  if (!options.profile) return options;
+  const profilePath = path.resolve(process.cwd(), 'profiles', `${options.profile}.json`);
+  if (!existsSync(profilePath)) return options;
+  const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
 
   return {
     ...options,
-    brandName: options.brandName || 'TDC NET',
-    system: options.system || 'TDC NET',
-    logoPath: options.logoPath || (existsSync('./assets/tdc-net-logo.png') ? './assets/tdc-net-logo.png' : ''),
+    brandName: options.brandName || profile.brandName || '',
+    system: options.system || profile.system || '',
+    logoPath: options.logoPath || profile.logoPath || '',
+    interactionTitle: options.interactionTitle || profile.interactionTitle || '',
+    securityText: options.securityText || profile.securityText || '',
+    dataBoundaryTitle: options.dataBoundaryTitle || profile.dataBoundaryTitle || '',
+    dataBoundaryText: options.dataBoundaryText || profile.dataBoundaryText || '',
   };
-}
-
-function isTdcNetProfile(options) {
-  return options.profile === 'tdc-net';
 }
 
 function escapeHtml(value = '') {
@@ -209,9 +220,7 @@ function buildDefaultDocument(meta, options) {
       number: '3.1',
       title: 'Security setup',
       paragraphs: [
-        isTdcNetProfile(options)
-          ? 'Security follows the getting-started model for TDCNET API Gateway security and Ping. A client creates and signs a JSON Web Token (JWT), exchanges it for an access token, and then uses that access token when calling the service.'
-          : 'Document the authentication, authorization, and data-protection requirements for the target environment.',
+        options.securityText || 'Document the authentication, authorization, and data-protection requirements for the target environment.',
       ],
     },
     {
@@ -221,11 +230,9 @@ function buildDefaultDocument(meta, options) {
     },
     {
       number: '3.3',
-      title: isTdcNetProfile(options) ? 'Chinese walls' : 'Data boundaries',
+      title: options.dataBoundaryTitle || 'Data boundaries',
       paragraphs: [
-        isTdcNetProfile(options)
-          ? 'TDC NET ensures that only subscribers related to the individual ISP can be operated through the relevant API services.'
-          : 'Document any tenant, customer, environment, or access-boundary constraints that apply to this API.',
+        options.dataBoundaryText || 'Document any tenant, customer, environment, or access-boundary constraints that apply to this API.',
       ],
     },
   ];
@@ -247,7 +254,7 @@ function buildDefaultDocument(meta, options) {
   const toc = [
     { number: '1', title: 'Change log', page: '2', level: 1 },
     { number: '2', title: 'Overview', page: '3', level: 1 },
-    { number: '3', title: isTdcNetProfile(options) ? 'Interaction with TDC NET API' : 'API interaction model', page: '4', level: 1 },
+    { number: '3', title: options.interactionTitle || 'API interaction model', page: '4', level: 1 },
     ...interactionSubsections.map((section) => ({ number: section.number, title: section.title, page: '4', level: 2 })),
     { number: '4', title: 'The specific API', page: '5', level: 1 },
     ...endpointSubsections.map((section) => ({ number: section.number, title: section.title, page: '5', level: 2 })),
@@ -272,7 +279,7 @@ function buildDefaultDocument(meta, options) {
       },
       {
         number: '3',
-        title: isTdcNetProfile(options) ? 'Interaction with TDC NET API' : 'API interaction model',
+        title: options.interactionTitle || 'API interaction model',
         subsections: interactionSubsections,
       },
       {

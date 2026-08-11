@@ -32,6 +32,12 @@ Example:
 ./scripts/process-spec-drop.sh
 ```
 
+With the TDC NET profile:
+
+```bash
+SPEC_PROFILE=tdc-net ./scripts/process-spec-drop.sh
+```
+
 ## Notes
 
 - The script processes `.yaml`, `.yml`, and `.json` files in `spec-drop/yaml/`

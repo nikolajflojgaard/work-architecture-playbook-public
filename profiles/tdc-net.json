@@ -1,0 +1,9 @@
+{
+  "brandName": "TDC NET",
+  "system": "TDC NET",
+  "logoPath": "./assets/tdc-net-logo.png",
+  "interactionTitle": "Interaction with TDC NET API",
+  "securityText": "Security follows the getting-started model for TDCNET API Gateway security and Ping. A client creates and signs a JSON Web Token (JWT), exchanges it for an access token, and then uses that access token when calling the service.",
+  "dataBoundaryTitle": "Chinese walls",
+  "dataBoundaryText": "TDC NET ensures that only subscribers related to the individual ISP can be operated through the relevant API services."
+}
