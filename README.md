@@ -41,8 +41,9 @@ Copy-Item .\examples\sample-api.yaml .\spec-drop\yaml\sample-api.yaml
 ## Folder Layout
 
 - `examples/` - generic sample OpenAPI files
+- `examples/generated/` - checked-in example PDFs for quick GitHub review
 - `spec-drop/yaml/` - put input specs here
-- `spec-drop/pdf/` - generated PDFs land here
+- `spec-drop/pdf/` - generated PDFs land here and are ignored by git by default
 - `scripts/` - renderer and helper scripts
 - `profiles/` - optional rendering profiles such as `tdc-net`
 - `assets/` - optional logo/brand assets used by profiles
@@ -79,6 +80,10 @@ The profile uses:
 - `profiles/tdc-net.json` for TDC NET metadata and front-matter text
 - `assets/tdc-net-logo.png` for the cover logo
 - `templates/tdc-net-api-spec-template.yaml` as a visible YAML/front-matter template
+
+The checked-in generated Net OrderCache example is:
+
+- `examples/generated/net-ordercache.pdf`
 
 Generate HTML:
 

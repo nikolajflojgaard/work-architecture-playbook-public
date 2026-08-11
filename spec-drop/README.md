@@ -10,6 +10,8 @@ Use this folder when you want a simple drop-zone workflow.
 
 - `spec-drop/pdf/`
 
+Generated files in this folder are ignored by git by default. Checked-in review examples belong under `examples/generated/`.
+
 ## Rule
 
 Use the YAML filename as the base name.
