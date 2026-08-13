@@ -38,6 +38,7 @@ function findChrome() {
 function parseArgs(rawArgs) {
   const options = {
     htmlOnly: false,
+    fullSchema: false,
     titlePage: true,
     profile: '',
     title: '',
@@ -57,6 +58,7 @@ function parseArgs(rawArgs) {
   for (let i = 0; i < rawArgs.length; i += 1) {
     const arg = rawArgs[i];
     if (arg === '--html') options.htmlOnly = true;
+    else if (arg === '--full-schema') options.fullSchema = true;
     else if (arg === '--no-title-page') options.titlePage = false;
     else if (arg === '--profile') options.profile = rawArgs[++i] || '';
     else if (arg === '--title') options.title = rawArgs[++i] || '';
@@ -149,6 +151,7 @@ function renderSubsections(subsections = []) {
       <div class="doc-subsection">
         <h3>${escapeHtml(section.number)} ${escapeHtml(section.title)}</h3>
         ${renderParagraphs(section.paragraphs)}
+        ${renderTable(section.table)}
         ${renderCodeBlock(section.codeBlock)}
       </div>`
     )
@@ -196,6 +199,7 @@ function buildDocumentFrontMatter(meta, options) {
 
 function buildDefaultDocument(meta, options) {
   const endpoints = extractEndpoints(meta.openapi?.paths || {});
+  const schemaSubsections = extractSchemaTables(meta.openapi, options);
   const attachmentSubsections = extractAttachmentExamples(meta.openapi);
   const systemName = options.system || meta.openapi?.info?.['x-system-name'] || meta.title || 'API';
   const today = options.date || new Date().toISOString().slice(0, 10);
@@ -259,6 +263,8 @@ function buildDefaultDocument(meta, options) {
     { number: '4', title: 'The specific API', page: '5', level: 1 },
     ...endpointSubsections.map((section) => ({ number: section.number, title: section.title, page: '5', level: 2 })),
     { number: '5', title: 'Attachments', page: String(5 + endpointSubsections.length), level: 1 },
+    { number: '6', title: 'Schema', page: String(6 + endpointSubsections.length), level: 1 },
+    ...schemaSubsections.map((section) => ({ number: section.number, title: section.title, page: String(6 + endpointSubsections.length), level: 2 })),
   ];
 
   return {
@@ -295,6 +301,14 @@ function buildDefaultDocument(meta, options) {
           : ['No request or response payload examples were found in the supplied OpenAPI document.'],
         subsections: attachmentSubsections,
       },
+      {
+        number: '6',
+        title: 'Schema',
+        paragraphs: schemaSubsections.length
+          ? ['The following tables summarize schemas extracted from the OpenAPI document.']
+          : ['No schemas were found in the supplied OpenAPI document.'],
+        subsections: schemaSubsections,
+      },
     ],
   };
 }
@@ -328,7 +342,407 @@ function metaTitleFallback(routePath) {
     .trim() || 'the API resource';
 }
 
-function extractAttachmentExamples(openapi) {
+function extractSchemaTables(openapi, options = {}) {
+  const schemas = openapi?.components?.schemas || {};
+  const schemaEntries = Object.entries(schemas);
+
+  if (schemaEntries.length) {
+    return buildGenericSchemaSections(openapi, schemaEntries, options);
+  }
+
+  return extractInlineOperationSchemaTables(openapi, 1);
+}
+
+function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
+  const fieldGroups = new Map();
+  const schemaSummaries = [];
+  const schemaDetails = [];
+
+  for (const [schemaName, rawSchema] of schemaEntries) {
+    const rows = extractSchemaRows(openapi, rawSchema);
+    const refs = extractSchemaReferences(rawSchema);
+    const category = classifySchemaName(schemaName);
+
+    schemaDetails.push({ name: schemaName, category, rows, refs, rawSchema });
+    schemaSummaries.push([
+      schemaName,
+      category,
+      String(rows.length),
+      rows.map((row) => row.field).join(', ') || '(value)',
+    ]);
+
+    for (const row of rows) {
+      const key = [row.field, row.type, row.description].join('\u001f');
+      const group = fieldGroups.get(key) || {
+        field: row.field,
+        type: row.type,
+        description: row.description,
+        requiredIn: [],
+        optionalIn: [],
+      };
+
+      if (row.required === 'Yes') group.requiredIn.push(schemaName);
+      else group.optionalIn.push(schemaName);
+
+      fieldGroups.set(key, group);
+    }
+  }
+
+  const commonRows = [];
+  const specificRows = [];
+  const commonRowsByCategory = new Map();
+
+  for (const group of fieldGroups.values()) {
+    const usedBy = [...group.requiredIn, ...group.optionalIn];
+    const row = [
+      group.field,
+      group.type,
+      formatSchemaNameList(group.requiredIn),
+      formatSchemaNameList(group.optionalIn),
+      group.description,
+    ];
+
+    if (usedBy.length > 1) {
+      commonRows.push(row);
+      const category = classifyFieldName(group.field);
+      const rows = commonRowsByCategory.get(category) || [];
+      rows.push(row);
+      commonRowsByCategory.set(category, rows);
+    }
+    else specificRows.push([usedBy[0] || '', ...row]);
+  }
+
+  const relationshipRows = schemaDetails
+    .filter((schema) => schema.refs.length)
+    .sort(compareSchemaDetails)
+    .map((schema) => [
+      schema.name,
+      schema.category,
+      schema.refs.map((ref) => `${ref.field} -> ${ref.target}`).join(', '),
+    ]);
+
+  const wrapperRows = schemaDetails
+    .filter((schema) => schema.category === 'Wrapper')
+    .sort(compareSchemaDetails)
+    .map((schema) => [
+      schema.name,
+      describeWrapperPattern(schema.name),
+      schema.refs.map((ref) => ref.target).join(', ') || '-',
+      schema.rows.map((row) => row.field).join(', ') || '(value)',
+    ]);
+
+  const topFieldRows = [...fieldGroups.values()]
+    .map((group) => {
+      const usedBy = [...group.requiredIn, ...group.optionalIn];
+      return [
+        group.field,
+        group.type,
+        String(usedBy.length),
+        formatSchemaNameList(usedBy),
+      ];
+    })
+    .sort((left, right) => Number(right[2]) - Number(left[2]) || compareRows(left, right))
+    .slice(0, 12);
+
+  const sections = [
+    {
+      number: '6.1',
+      title: 'Schema overview',
+      paragraphs: ['Compact overview of the component schemas, reusable fields, and schema-specific differences in this OpenAPI document.'],
+      table: {
+        columns: ['Metric', 'Value'],
+        rows: [
+          ['Component schemas', String(schemaDetails.length)],
+          ['Common field definitions', String(commonRows.length)],
+          ['Schema-specific field definitions', String(specificRows.length)],
+          ['Wrapper schemas', String(wrapperRows.length)],
+          ['Relationship-bearing schemas', String(relationshipRows.length)],
+        ],
+      },
+    },
+    {
+      number: '6.2',
+      title: 'Top reused fields',
+      paragraphs: ['Most reused fields across the component schemas.'],
+      table: {
+        columns: ['Field', 'Type', 'Schema count', 'Used by'],
+        rows: topFieldRows,
+      },
+    },
+    {
+      number: '6.3',
+      title: 'Schema relationships',
+      paragraphs: relationshipRows.length
+        ? ['Reference relationships extracted from component schema properties.']
+        : ['No schema-to-schema references were found.'],
+      table: {
+        columns: ['Schema', 'Category', 'References'],
+        rows: relationshipRows,
+      },
+    },
+    {
+      number: '6.4',
+      title: 'Wrapper patterns',
+      paragraphs: wrapperRows.length
+        ? ['Structural wrapper schemas are collapsed here instead of repeated as full object tables.']
+        : ['No wrapper schemas were found.'],
+      table: {
+        columns: ['Wrapper', 'Pattern', 'Wraps', 'Fields'],
+        rows: wrapperRows,
+      },
+    },
+    ...buildCommonFieldCategorySections(commonRowsByCategory, 5),
+    {
+      number: `6.${5 + commonRowsByCategory.size}`,
+      title: 'Schema-specific fields',
+      paragraphs: specificRows.length
+        ? ['Fields that only appear in one component schema are listed here as the schema-specific differences.']
+        : ['No schema-specific fields were found.'],
+      table: {
+        columns: ['Schema', 'Field', 'Type', 'Required in', 'Optional in', 'Description'],
+        rows: specificRows.sort(compareRows),
+      },
+    },
+    {
+      number: `6.${6 + commonRowsByCategory.size}`,
+      title: 'Schema index',
+      paragraphs: ['Index of component schemas included in this OpenAPI document.'],
+      table: {
+        columns: ['Schema', 'Category', 'Field count', 'Fields'],
+        rows: schemaSummaries.sort(compareSchemaSummaryRows),
+      },
+    },
+  ];
+
+  if (options.fullSchema) {
+    const startIndex = 7 + commonRowsByCategory.size;
+    sections.push(
+      ...schemaDetails
+        .sort(compareSchemaDetails)
+        .map((schema, index) =>
+          buildSchemaTable(openapi, schema.rawSchema, `6.${startIndex + index}`, `${schema.name} full schema`)
+        )
+    );
+  }
+
+  return sections;
+}
+
+function extractInlineOperationSchemaTables(openapi, startIndex) {
+  const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+  const tables = [];
+  let schemaIndex = startIndex;
+
+  for (const [routePath, operations] of Object.entries(openapi?.paths || {})) {
+    for (const method of methods) {
+      const operation = operations?.[method];
+      if (!operation) continue;
+
+      const operationLabel = `${method.toUpperCase()} ${routePath}`;
+      for (const [contentType, definition] of Object.entries(operation.requestBody?.content || {})) {
+        if (!definition?.schema || shouldSkipContentType(contentType) || schemaIsReusableRef(definition.schema)) continue;
+        tables.push(buildSchemaTable(openapi, definition.schema, `6.${schemaIndex++}`, `${operationLabel} request schema`));
+      }
+
+      for (const [statusCode, response] of Object.entries(operation.responses || {})) {
+        for (const [contentType, definition] of Object.entries(response?.content || {})) {
+          if (!definition?.schema || shouldSkipContentType(contentType) || schemaIsReusableRef(definition.schema)) continue;
+          tables.push(buildSchemaTable(openapi, definition.schema, `6.${schemaIndex++}`, `${operationLabel} response ${statusCode} schema`));
+        }
+      }
+    }
+  }
+
+  return tables;
+}
+
+function buildSchemaTable(openapi, rawSchema, number, title) {
+  const rows = extractSchemaRows(openapi, rawSchema).map((row) => [
+    row.field,
+    row.type,
+    row.required,
+    row.description,
+  ]);
+  const schema = resolveSchema(openapi, rawSchema) || rawSchema;
+
+  return {
+    number,
+    title,
+    paragraphs: [describeSchemaPurpose(schema)].filter(Boolean),
+    table: {
+      columns: ['Field', 'Type', 'Required', 'Description'],
+      rows,
+    },
+  };
+}
+
+function extractSchemaRows(openapi, rawSchema) {
+  const schema = resolveSchema(openapi, rawSchema) || rawSchema;
+  const required = new Set(Array.isArray(schema?.required) ? schema.required : []);
+  const rows = [];
+
+  for (const [fieldName, propertySchema] of Object.entries(schema?.properties || {})) {
+    const resolvedProperty = resolveSchema(openapi, propertySchema) || propertySchema;
+    rows.push({
+      field: fieldName,
+      type: describeSchemaType(openapi, propertySchema),
+      required: required.has(fieldName) ? 'Yes' : 'No',
+      description: describeSchemaPurpose(resolvedProperty),
+    });
+  }
+
+  if (!rows.length) {
+    rows.push({
+      field: '(value)',
+      type: describeSchemaType(openapi, schema),
+      required: schema?.nullable ? 'No' : 'Yes',
+      description: describeSchemaPurpose(schema),
+    });
+  }
+
+  return rows;
+}
+
+function buildCommonFieldCategorySections(commonRowsByCategory, startNumber) {
+  return [...commonRowsByCategory.entries()]
+    .sort(([left], [right]) => fieldCategoryRank(left) - fieldCategoryRank(right) || left.localeCompare(right))
+    .map(([category, rows], index) => ({
+      number: `6.${startNumber + index}`,
+      title: `${category} fields`,
+      paragraphs: [`Common ${category.toLowerCase()} fields reused by multiple component schemas.`],
+      table: {
+        columns: ['Field', 'Type', 'Required in', 'Optional in', 'Description'],
+        rows: rows.sort(compareRows),
+      },
+    }));
+}
+
+function extractSchemaReferences(schema) {
+  const refs = [];
+
+  for (const [field, propertySchema] of Object.entries(schema?.properties || {})) {
+    const target = getSchemaReferenceName(propertySchema);
+    if (target) refs.push({ field, target });
+  }
+
+  return refs.sort((left, right) => `${left.field}:${left.target}`.localeCompare(`${right.field}:${right.target}`));
+}
+
+function getSchemaReferenceName(schema) {
+  if (!schema) return '';
+  if (schema.$ref) return schema.$ref.replace('#/components/schemas/', '');
+  if (schema.type === 'array') return getSchemaReferenceName(schema.items);
+
+  for (const key of ['oneOf', 'anyOf', 'allOf']) {
+    if (!Array.isArray(schema[key])) continue;
+    const refs = schema[key].map(getSchemaReferenceName).filter(Boolean);
+    if (refs.length) return refs.join(' | ');
+  }
+
+  return '';
+}
+
+function classifySchemaName(name) {
+  if (/^(PagedModel|CollectionModel|EntityModel|Page|Links?|RepresentationModel|Revision|Revisions)/.test(name)) {
+    return 'Wrapper';
+  }
+
+  if (/Error|DefaultError|Problem|Fault/i.test(name)) return 'Error';
+  if (/RequestBody|Request$/i.test(name)) return 'Request';
+  if (/DTO$/i.test(name)) return 'DTO';
+  if (/Type$|Status|State|Stage|Cause|Count$/i.test(name)) return 'Type';
+  return 'Domain';
+}
+
+function classifyFieldName(name) {
+  if (/^(created|lastModif|lastModifed|modified|updated|deleted|createdBy|lastModifedBy)/i.test(name)) return 'Audit';
+  if (/(^id$|Id$|Ids$|No$|Key$|Number$|Nr$|uuid|external)/i.test(name)) return 'Identifier';
+  if (/(status|state|stage|type|cause|reason|error|code|message)/i.test(name)) return 'Status and error';
+  if (/(page|size|sort|total|first|last|numberOf|empty|offset|paged|unpaged)/i.test(name)) return 'Pagination';
+  if (/(_links|links|href|rel|templated)/i.test(name)) return 'Link';
+  if (/(date|time|slot|from|to)$/i.test(name)) return 'Scheduling';
+  if (/(list|items|content|collection|array)$/i.test(name)) return 'Collection';
+  return 'Business';
+}
+
+function fieldCategoryRank(category) {
+  const order = ['Identifier', 'Audit', 'Status and error', 'Pagination', 'Link', 'Scheduling', 'Collection', 'Business'];
+  const index = order.indexOf(category);
+  return index === -1 ? order.length : index;
+}
+
+function schemaCategoryRank(category) {
+  const order = ['Domain', 'DTO', 'Request', 'Type', 'Wrapper', 'Error'];
+  const index = order.indexOf(category);
+  return index === -1 ? order.length : index;
+}
+
+function describeWrapperPattern(name) {
+  if (name.startsWith('PagedModel')) return 'Paged collection wrapper';
+  if (name.startsWith('CollectionModel')) return 'Collection wrapper';
+  if (name.startsWith('EntityModel')) return 'Entity wrapper';
+  if (name.startsWith('Page')) return 'Page wrapper';
+  if (name.startsWith('Revision')) return 'Revision wrapper';
+  if (/Links?/.test(name)) return 'Link wrapper';
+  return 'Structural wrapper';
+}
+
+function compareSchemaDetails(left, right) {
+  return (
+    schemaCategoryRank(left.category) - schemaCategoryRank(right.category) ||
+    left.name.localeCompare(right.name)
+  );
+}
+
+function compareSchemaSummaryRows(left, right) {
+  return (
+    schemaCategoryRank(left[1]) - schemaCategoryRank(right[1]) ||
+    left[0].localeCompare(right[0])
+  );
+}
+
+function compareRows(left, right) {
+  return left.join('\u001f').localeCompare(right.join('\u001f'));
+}
+
+function formatSchemaNameList(names) {
+  if (!names.length) return '-';
+  const sorted = names.sort();
+  const visible = sorted.slice(0, 8).join(', ');
+  return sorted.length > 8 ? `${sorted.length} schemas: ${visible}, ...` : visible;
+}
+
+function schemaIsReusableRef(schema) {
+  return typeof schema?.$ref === 'string' && schema.$ref.startsWith('#/components/schemas/');
+}
+
+function resolveSchema(openapi, schema) {
+  if (!schema?.$ref) return schema;
+  const match = /^#\/components\/schemas\/(.+)$/.exec(schema.$ref);
+  if (!match) return schema;
+  return openapi?.components?.schemas?.[match[1]] || schema;
+}
+
+function describeSchemaType(openapi, schema) {
+  if (!schema) return 'unknown';
+  if (schema.$ref) return schema.$ref.replace('#/components/schemas/', '');
+  if (Array.isArray(schema.enum)) return `enum: ${schema.enum.join(', ')}`;
+  if (Array.isArray(schema.oneOf)) return `one of: ${schema.oneOf.map((entry) => describeSchemaType(openapi, entry)).join(', ')}`;
+  if (Array.isArray(schema.anyOf)) return `any of: ${schema.anyOf.map((entry) => describeSchemaType(openapi, entry)).join(', ')}`;
+  if (Array.isArray(schema.allOf)) return `all of: ${schema.allOf.map((entry) => describeSchemaType(openapi, entry)).join(', ')}`;
+  if (schema.type === 'array') return `array of ${describeSchemaType(openapi, schema.items)}`;
+
+  const resolved = resolveSchema(openapi, schema);
+  const type = resolved?.type || schema.type || 'object';
+  return resolved?.format ? `${type} (${resolved.format})` : type;
+}
+
+function describeSchemaPurpose(schema) {
+  if (!schema) return '';
+  return schema.description || schema.title || schema.summary || '';
+}
+
+function extractAttachmentExamples(openapi, sectionNumber = '5') {
   const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
   const attachments = [];
   let attachmentIndex = 1;
@@ -342,7 +756,7 @@ function extractAttachmentExamples(openapi) {
       const requestExamples = extractContentExamples(openapi, operation.requestBody?.content);
       for (const example of requestExamples) {
         attachments.push({
-          number: `5.${attachmentIndex++}`,
+          number: `${sectionNumber}.${attachmentIndex++}`,
           title: `${operationLabel} request${example.name ? ` — ${example.name}` : ''}`,
           paragraphs: [example.contentType],
           codeBlock: formatPayload(example.value),
@@ -353,7 +767,7 @@ function extractAttachmentExamples(openapi) {
         const responseExamples = extractContentExamples(openapi, response?.content);
         for (const example of responseExamples) {
           attachments.push({
-            number: `5.${attachmentIndex++}`,
+            number: `${sectionNumber}.${attachmentIndex++}`,
             title: `${operationLabel} response ${statusCode}${example.name ? ` — ${example.name}` : ''}`,
             paragraphs: [example.contentType],
             codeBlock: formatPayload(example.value),
