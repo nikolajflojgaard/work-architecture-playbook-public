@@ -232,7 +232,9 @@ function renderTocItems(items = []) {
   return groups
     .map((group) => {
       if (typeof group.item === 'string') return `<li>${escapeHtml(group.item)}</li>`;
-      const denseClass = ['5', '6'].includes(group.item.number) ? ' toc-children--dense' : '';
+      const denseClass = ['5', '6'].includes(group.item.number)
+        ? ` toc-children--dense toc-children--section-${group.item.number}`
+        : '';
       const children = group.children.length
         ? `<ol class="toc-children${denseClass}">${group.children.map((item) => tocRowHtml(item)).join('')}</ol>`
         : '';
@@ -1078,9 +1080,16 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       padding-left: 0 !important;
     }
     .toc-children--dense {
-      columns: 2;
-      column-gap: 22px;
-      margin: 4px 0 12px !important;
+      display: grid;
+      column-gap: 20px;
+      row-gap: 1px;
+      margin: 6px 0 13px !important;
+    }
+    .toc-children--section-5 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .toc-children--section-6 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .toc-row {
       display: flex;
@@ -1100,16 +1109,23 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       color: var(--muted);
     }
     .toc-children--dense .toc-row--sub {
-      padding-left: 12px;
-      font-size: 9.5px;
-      line-height: 1.25;
-      margin: 2px 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: baseline;
+      padding-left: 0;
+      font-size: 9px;
+      line-height: 1.22;
+      margin: 0;
     }
     .toc-row__label {
       max-width: 78%;
     }
     .toc-children--dense .toc-row__label {
-      max-width: 84%;
+      max-width: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .toc-row__dots {
       flex: 1;
@@ -1117,14 +1133,16 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       transform: translateY(-3px);
     }
     .toc-children--dense .toc-row__dots {
-      opacity: 0.55;
+      display: none;
     }
     .toc-row__page {
       min-width: 18px;
       text-align: right;
     }
     .toc-children--dense .toc-row__page {
-      min-width: 14px;
+      min-width: 18px;
+      color: var(--ink);
+      font-weight: 600;
     }
     .page-break { break-after: page; page-break-after: always; }
     @page { size: A4; margin: 0; }
