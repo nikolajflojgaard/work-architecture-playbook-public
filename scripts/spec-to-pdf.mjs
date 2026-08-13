@@ -182,13 +182,7 @@ function buildDocumentFrontMatter(meta, options) {
   const doc = meta.document || buildDefaultDocument(meta, options);
   if (!doc) return '';
 
-  const tocItems = (doc.toc || [])
-    .map((item) => {
-      if (typeof item === 'string') return `<li>${escapeHtml(item)}</li>`;
-      const levelClass = item.level === 2 ? 'toc-row toc-row--sub' : 'toc-row toc-row--main';
-      return `<li class="${levelClass}" data-target="#${sectionAnchorId(item.targetNumber || item.number)}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
-    })
-    .join('');
+  const tocItems = renderTocItems(doc.toc || []);
 
   const tocPage = `
   <section class="doc-page toc-page">
@@ -215,6 +209,41 @@ function buildDocumentFrontMatter(meta, options) {
     .join('\n<div class="page-break"></div>\n');
 
   return `${tocPage}\n${sections}\n<div class="page-break"></div>`;
+}
+
+function renderTocItems(items = []) {
+  const groups = [];
+  let currentGroup = null;
+
+  for (const item of items) {
+    if (typeof item === 'string') {
+      groups.push({ item, children: [] });
+      currentGroup = null;
+      continue;
+    }
+
+    if (item.level === 2 && currentGroup) currentGroup.children.push(item);
+    else {
+      currentGroup = { item, children: [] };
+      groups.push(currentGroup);
+    }
+  }
+
+  return groups
+    .map((group) => {
+      if (typeof group.item === 'string') return `<li>${escapeHtml(group.item)}</li>`;
+      const denseClass = ['5', '6'].includes(group.item.number) ? ' toc-children--dense' : '';
+      const children = group.children.length
+        ? `<ol class="toc-children${denseClass}">${group.children.map((item) => tocRowHtml(item)).join('')}</ol>`
+        : '';
+      return `${tocRowHtml(group.item)}${children}`;
+    })
+    .join('');
+}
+
+function tocRowHtml(item) {
+  const levelClass = item.level === 2 ? 'toc-row toc-row--sub' : 'toc-row toc-row--main';
+  return `<li class="${levelClass}" data-target="#${sectionAnchorId(item.targetNumber || item.number)}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
 }
 
 function buildDefaultDocument(meta, options) {
@@ -1034,40 +1063,68 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
     }
     .toc-page ol {
       margin: 0;
-      padding-left: 24px;
+      padding-left: 0;
     }
     .toc-page li {
-      margin: 10px 0;
+      margin: 0;
     }
     .toc-list {
       list-style: none;
       padding-left: 0 !important;
     }
+    .toc-children {
+      list-style: none;
+      margin: 4px 0 10px !important;
+      padding-left: 0 !important;
+    }
+    .toc-children--dense {
+      columns: 2;
+      column-gap: 22px;
+      margin: 4px 0 12px !important;
+    }
     .toc-row {
       display: flex;
       align-items: baseline;
       gap: 10px;
-      margin: 7px 0;
+      margin: 5px 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     .toc-row--main {
       font-weight: 600;
+      padding-top: 5px;
     }
     .toc-row--sub {
       padding-left: 22px;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
+    }
+    .toc-children--dense .toc-row--sub {
+      padding-left: 12px;
+      font-size: 9.5px;
+      line-height: 1.25;
+      margin: 2px 0;
     }
     .toc-row__label {
       max-width: 78%;
+    }
+    .toc-children--dense .toc-row__label {
+      max-width: 84%;
     }
     .toc-row__dots {
       flex: 1;
       border-bottom: 1px dotted #64748b;
       transform: translateY(-3px);
     }
+    .toc-children--dense .toc-row__dots {
+      opacity: 0.55;
+    }
     .toc-row__page {
       min-width: 18px;
       text-align: right;
+    }
+    .toc-children--dense .toc-row__page {
+      min-width: 14px;
     }
     .page-break { break-after: page; page-break-after: always; }
     @page { size: A4; margin: 0; }
