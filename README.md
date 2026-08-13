@@ -104,11 +104,11 @@ Generated PDFs include section `6 Schema` when the OpenAPI file has `components.
 The default schema section is compact and review-oriented:
 
 - schema overview
-- top reused fields
+- top reused fields with representative examples
 - schema relationships
 - wrapper patterns
-- semantic common-field groups
-- schema-specific fields
+- semantic common-field groups with representative examples
+- schema-specific fields with examples when supplied by the OpenAPI schema
 - schema index
 
 Use `--full-schema` only when you need every raw schema table in the PDF.

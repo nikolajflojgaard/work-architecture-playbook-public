@@ -379,12 +379,14 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
         field: row.field,
         typeVariants: new Set(),
         descriptionVariants: new Set(),
+        exampleVariants: new Set(),
         requiredIn: new Map(),
         optionalIn: new Map(),
       };
 
       group.typeVariants.add(row.type);
       if (row.description) group.descriptionVariants.add(row.description);
+      if (row.example) group.exampleVariants.add(row.example);
 
       if (row.required === 'Yes') addFamilySchema(group.requiredIn, family, schemaName);
       else addFamilySchema(group.optionalIn, family, schemaName);
@@ -406,6 +408,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       formatTypeVariants(group.typeVariants),
       formatFamilyNameList(group.requiredIn),
       formatFamilyNameList(group.optionalIn),
+      formatExampleVariants(group.exampleVariants),
       formatDescriptionVariants(group.descriptionVariants),
     ];
 
@@ -445,6 +448,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
         group.field,
         formatTypeVariants(group.typeVariants),
         String(usedBy.length),
+        formatExampleVariants(group.exampleVariants),
         usedBy.sort().join(', '),
       ];
     })
@@ -472,7 +476,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       title: 'Top reused fields',
       paragraphs: ['Most reused fields across the component schemas.'],
       table: {
-        columns: ['Field', 'Type', 'Schema count', 'Used by'],
+        columns: ['Field', 'Type', 'Schema count', 'Example', 'Used by'],
         rows: topFieldRows,
       },
     },
@@ -506,7 +510,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
         ? ['Fields that only appear in one schema family are listed here as the schema-specific differences.']
         : ['No schema-specific fields were found.'],
       table: {
-        columns: ['Schema family', 'Field', 'Type', 'Required in', 'Optional in', 'Description'],
+        columns: ['Schema family', 'Field', 'Type', 'Required in', 'Optional in', 'Example', 'Description'],
         rows: specificRows.sort(compareRows),
       },
     },
@@ -568,6 +572,7 @@ function buildSchemaTable(openapi, rawSchema, number, title) {
     row.field,
     row.type,
     row.required,
+    row.example,
     row.description,
   ]);
   const schema = resolveSchema(openapi, rawSchema) || rawSchema;
@@ -577,7 +582,7 @@ function buildSchemaTable(openapi, rawSchema, number, title) {
     title,
     paragraphs: [describeSchemaPurpose(schema)].filter(Boolean),
     table: {
-      columns: ['Field', 'Type', 'Required', 'Description'],
+      columns: ['Field', 'Type', 'Required', 'Example', 'Description'],
       rows,
     },
   };
@@ -594,6 +599,7 @@ function extractSchemaRows(openapi, rawSchema) {
       field: fieldName,
       type: describeSchemaType(openapi, propertySchema),
       required: required.has(fieldName) ? 'Yes' : 'No',
+      example: extractSchemaExample(propertySchema, resolvedProperty),
       description: describeSchemaPurpose(resolvedProperty),
     });
   }
@@ -603,6 +609,7 @@ function extractSchemaRows(openapi, rawSchema) {
       field: '(value)',
       type: describeSchemaType(openapi, schema),
       required: schema?.nullable ? 'No' : 'Yes',
+      example: extractSchemaExample(rawSchema, schema),
       description: describeSchemaPurpose(schema),
     });
   }
@@ -618,7 +625,7 @@ function buildCommonFieldCategorySections(commonRowsByCategory, startNumber) {
       title: `${category} fields`,
       paragraphs: [`Common ${category.toLowerCase()} fields reused by multiple component schemas.`],
       table: {
-        columns: ['Field', 'Type', 'Required in', 'Optional in', 'Description'],
+        columns: ['Field', 'Type', 'Required in', 'Optional in', 'Example', 'Description'],
         rows: rows.sort(compareRows),
       },
     }));
@@ -765,6 +772,36 @@ function formatDescriptionVariants(descriptionVariants) {
   if (!descriptions.length) return '';
   const visible = descriptions.slice(0, 2).join(' / ');
   return descriptions.length > 2 ? `${visible} / ...` : visible;
+}
+
+function formatExampleVariants(exampleVariants) {
+  const examples = [...exampleVariants].filter(Boolean).sort();
+  if (!examples.length) return '';
+  const visible = examples.slice(0, 2).join(' / ');
+  return examples.length > 2 ? `${visible} / ...` : visible;
+}
+
+function extractSchemaExample(rawSchema, resolvedSchema) {
+  const candidates = [rawSchema, resolvedSchema].filter(Boolean);
+
+  for (const schema of candidates) {
+    if (schema.example !== undefined) return formatExampleValue(schema.example);
+    if (Array.isArray(schema.examples) && schema.examples.length) return formatExampleValue(schema.examples[0]);
+    if (schema.examples && typeof schema.examples === 'object') {
+      const firstExample = Object.values(schema.examples)[0];
+      if (firstExample?.value !== undefined) return formatExampleValue(firstExample.value);
+      if (firstExample !== undefined) return formatExampleValue(firstExample);
+    }
+    if (Array.isArray(schema.enum) && schema.enum.length) return formatExampleValue(schema.enum[0]);
+  }
+
+  return '';
+}
+
+function formatExampleValue(value) {
+  const formatted = typeof value === 'string' ? value : JSON.stringify(value);
+  if (!formatted) return '';
+  return formatted.length > 80 ? `${formatted.slice(0, 77)}...` : formatted;
 }
 
 function schemaIsReusableRef(schema) {
@@ -1067,6 +1104,7 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       padding: 10px 12px;
       text-align: left;
       vertical-align: top;
+      overflow-wrap: anywhere;
     }
     .doc-table th {
       background: #eef4fb;

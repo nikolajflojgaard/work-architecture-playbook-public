@@ -99,7 +99,7 @@ x-document:
     - number: "6"
       title: Schema
       paragraphs:
-        - Generated documents summarize OpenAPI components.schemas here, grouping common fields, schema-specific fields, relationships, wrapper patterns, and the schema index.
+        - Generated documents summarize OpenAPI components.schemas here, grouping common fields, representative example values, schema-specific fields, relationships, wrapper patterns, and the schema index.
       subsections:
         - number: "6.1"
           title: Schema overview
@@ -108,7 +108,7 @@ x-document:
         - number: "6.2"
           title: Top reused fields
           paragraphs:
-            - Replace this with the most reused schema fields.
+            - Replace this with the most reused schema fields and representative example values.
         - number: "6.3"
           title: Schema relationships
           paragraphs:
