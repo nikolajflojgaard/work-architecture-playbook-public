@@ -201,7 +201,7 @@ function buildDocumentFrontMatter(meta, options) {
 
   const sections = (doc.sections || [])
     .flatMap((section) => {
-      if (section.number === '6') {
+      if (section.number === '5' || section.number === '6') {
         return [
           renderSectionPage(section),
           ...(section.subsections || []).map((subsection) =>
