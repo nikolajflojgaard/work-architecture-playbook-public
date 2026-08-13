@@ -362,27 +362,32 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
     const rows = extractSchemaRows(openapi, rawSchema);
     const refs = extractSchemaReferences(rawSchema);
     const category = classifySchemaName(schemaName);
+    const family = schemaFamilyName(schemaName);
 
-    schemaDetails.push({ name: schemaName, category, rows, refs, rawSchema });
+    schemaDetails.push({ name: schemaName, family, category, rows, refs, rawSchema });
     schemaSummaries.push([
       schemaName,
+      family,
       category,
       String(rows.length),
       rows.map((row) => row.field).join(', ') || '(value)',
     ]);
 
     for (const row of rows) {
-      const key = [row.field, row.type, row.description].join('\u001f');
+      const key = row.field;
       const group = fieldGroups.get(key) || {
         field: row.field,
-        type: row.type,
-        description: row.description,
-        requiredIn: [],
-        optionalIn: [],
+        typeVariants: new Set(),
+        descriptionVariants: new Set(),
+        requiredIn: new Map(),
+        optionalIn: new Map(),
       };
 
-      if (row.required === 'Yes') group.requiredIn.push(schemaName);
-      else group.optionalIn.push(schemaName);
+      group.typeVariants.add(row.type);
+      if (row.description) group.descriptionVariants.add(row.description);
+
+      if (row.required === 'Yes') addFamilySchema(group.requiredIn, family, schemaName);
+      else addFamilySchema(group.optionalIn, family, schemaName);
 
       fieldGroups.set(key, group);
     }
@@ -393,23 +398,25 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
   const commonRowsByCategory = new Map();
 
   for (const group of fieldGroups.values()) {
-    const usedBy = [...group.requiredIn, ...group.optionalIn];
+    const requiredFamilies = [...group.requiredIn.keys()];
+    const optionalFamilies = [...group.optionalIn.keys()];
+    const usedFamilies = [...new Set([...requiredFamilies, ...optionalFamilies])];
     const row = [
       group.field,
-      group.type,
-      formatSchemaNameList(group.requiredIn),
-      formatSchemaNameList(group.optionalIn),
-      group.description,
+      formatTypeVariants(group.typeVariants),
+      formatFamilyNameList(group.requiredIn),
+      formatFamilyNameList(group.optionalIn),
+      formatDescriptionVariants(group.descriptionVariants),
     ];
 
-    if (usedBy.length > 1) {
+    if (usedFamilies.length > 1) {
       commonRows.push(row);
       const category = classifyFieldName(group.field);
       const rows = commonRowsByCategory.get(category) || [];
       rows.push(row);
       commonRowsByCategory.set(category, rows);
     }
-    else specificRows.push([usedBy[0] || '', ...row]);
+    else specificRows.push([usedFamilies[0] || '', ...row]);
   }
 
   const relationshipRows = schemaDetails
@@ -433,12 +440,12 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
 
   const topFieldRows = [...fieldGroups.values()]
     .map((group) => {
-      const usedBy = [...group.requiredIn, ...group.optionalIn];
+      const usedBy = [...new Set([...group.requiredIn.keys(), ...group.optionalIn.keys()])];
       return [
         group.field,
-        group.type,
+        formatTypeVariants(group.typeVariants),
         String(usedBy.length),
-        formatSchemaNameList(usedBy),
+        usedBy.sort().join(', '),
       ];
     })
     .sort((left, right) => Number(right[2]) - Number(left[2]) || compareRows(left, right))
@@ -496,10 +503,10 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       number: `6.${5 + commonRowsByCategory.size}`,
       title: 'Schema-specific fields',
       paragraphs: specificRows.length
-        ? ['Fields that only appear in one component schema are listed here as the schema-specific differences.']
+        ? ['Fields that only appear in one schema family are listed here as the schema-specific differences.']
         : ['No schema-specific fields were found.'],
       table: {
-        columns: ['Schema', 'Field', 'Type', 'Required in', 'Optional in', 'Description'],
+        columns: ['Schema family', 'Field', 'Type', 'Required in', 'Optional in', 'Description'],
         rows: specificRows.sort(compareRows),
       },
     },
@@ -508,7 +515,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       title: 'Schema index',
       paragraphs: ['Index of component schemas included in this OpenAPI document.'],
       table: {
-        columns: ['Schema', 'Category', 'Field count', 'Fields'],
+        columns: ['Schema', 'Family', 'Category', 'Field count', 'Fields'],
         rows: schemaSummaries.sort(compareSchemaSummaryRows),
       },
     },
@@ -618,14 +625,14 @@ function buildCommonFieldCategorySections(commonRowsByCategory, startNumber) {
 }
 
 function extractSchemaReferences(schema) {
-  const refs = [];
+  const refs = new Map();
 
   for (const [field, propertySchema] of Object.entries(schema?.properties || {})) {
     const target = getSchemaReferenceName(propertySchema);
-    if (target) refs.push({ field, target });
+    if (target) refs.set(`${field}\u001f${target}`, { field, target });
   }
 
-  return refs.sort((left, right) => `${left.field}:${left.target}`.localeCompare(`${right.field}:${right.target}`));
+  return [...refs.values()].sort((left, right) => `${left.field}:${left.target}`.localeCompare(`${right.field}:${right.target}`));
 }
 
 function getSchemaReferenceName(schema) {
@@ -652,6 +659,20 @@ function classifySchemaName(name) {
   if (/DTO$/i.test(name)) return 'DTO';
   if (/Type$|Status|State|Stage|Cause|Count$/i.test(name)) return 'Type';
   return 'Domain';
+}
+
+function schemaFamilyName(name) {
+  return name
+    .replace(/^PagedModelEntityModel/, '')
+    .replace(/^CollectionModelEntityModel/, '')
+    .replace(/^EntityModel/, '')
+    .replace(/^Page(?=[A-Z])/, '')
+    .replace(/^PagedModel/, '')
+    .replace(/^CollectionModel/, '')
+    .replace(/RequestBody$/, '')
+    .replace(/Request$/, '')
+    .replace(/DTO$/, '')
+    .replace(/Type$/, '') || name;
 }
 
 function classifyFieldName(name) {
@@ -696,7 +717,8 @@ function compareSchemaDetails(left, right) {
 
 function compareSchemaSummaryRows(left, right) {
   return (
-    schemaCategoryRank(left[1]) - schemaCategoryRank(right[1]) ||
+    left[1].localeCompare(right[1]) ||
+    schemaCategoryRank(left[2]) - schemaCategoryRank(right[2]) ||
     left[0].localeCompare(right[0])
   );
 }
@@ -710,6 +732,39 @@ function formatSchemaNameList(names) {
   const sorted = names.sort();
   const visible = sorted.slice(0, 8).join(', ');
   return sorted.length > 8 ? `${sorted.length} schemas: ${visible}, ...` : visible;
+}
+
+function addFamilySchema(target, family, schemaName) {
+  const schemas = target.get(family) || new Set();
+  schemas.add(schemaName);
+  target.set(family, schemas);
+}
+
+function formatFamilyNameList(families) {
+  if (!families.size) return '-';
+
+  return [...families.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([family, schemas]) => {
+      const variants = [...schemas].sort();
+      if (variants.length <= 1 || variants[0] === family) return family;
+      return `${family} (${variants.length} variants)`;
+    })
+    .join(', ');
+}
+
+function formatTypeVariants(typeVariants) {
+  const types = [...typeVariants].sort();
+  if (!types.length) return 'unknown';
+  const visible = types.slice(0, 4).join(' | ');
+  return types.length > 4 ? `${visible} | ...` : visible;
+}
+
+function formatDescriptionVariants(descriptionVariants) {
+  const descriptions = [...descriptionVariants].sort();
+  if (!descriptions.length) return '';
+  const visible = descriptions.slice(0, 2).join(' / ');
+  return descriptions.length > 2 ? `${visible} / ...` : visible;
 }
 
 function schemaIsReusableRef(schema) {
