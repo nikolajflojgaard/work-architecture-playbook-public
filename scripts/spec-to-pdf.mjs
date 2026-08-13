@@ -186,7 +186,7 @@ function buildDocumentFrontMatter(meta, options) {
     .map((item) => {
       if (typeof item === 'string') return `<li>${escapeHtml(item)}</li>`;
       const levelClass = item.level === 2 ? 'toc-row toc-row--sub' : 'toc-row toc-row--main';
-      return `<li class="${levelClass}" data-target="#${sectionAnchorId(item.number)}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
+      return `<li class="${levelClass}" data-target="#${sectionAnchorId(item.targetNumber || item.number)}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
     })
     .join('');
 
@@ -279,10 +279,11 @@ function buildDefaultDocument(meta, options) {
     { number: '1', title: 'Change log', page: '2', level: 1 },
     { number: '2', title: 'Overview', page: '3', level: 1 },
     { number: '3', title: options.interactionTitle || 'API interaction model', page: '4', level: 1 },
-    ...interactionSubsections.map((section) => ({ number: section.number, title: section.title, page: '4', level: 2 })),
+    ...interactionSubsections.map((section) => ({ number: section.number, title: section.title, page: '4', level: 2, targetNumber: '3' })),
     { number: '4', title: 'The specific API', page: '5', level: 1 },
-    ...endpointSubsections.map((section) => ({ number: section.number, title: section.title, page: '5', level: 2 })),
+    ...endpointSubsections.map((section) => ({ number: section.number, title: section.title, page: '5', level: 2, targetNumber: '4' })),
     { number: '5', title: 'Attachments', page: String(5 + endpointSubsections.length), level: 1 },
+    ...attachmentSubsections.map((section) => ({ number: section.number, title: section.title, page: String(5 + endpointSubsections.length), level: 2 })),
     { number: '6', title: 'Schema', page: String(6 + endpointSubsections.length), level: 1 },
     ...schemaSubsections.map((section) => ({ number: section.number, title: section.title, page: String(6 + endpointSubsections.length), level: 2 })),
   ];
