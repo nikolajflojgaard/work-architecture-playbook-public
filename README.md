@@ -91,6 +91,28 @@ Generate HTML:
 npm run spec:html -- ./examples/sample-api.yaml ./output/sample-api.html
 ```
 
+Generate with the full raw schema appendix:
+
+```bash
+npm run spec:pdf -- --full-schema ./spec-drop/yaml/net-ordercache.yaml ./output/net-ordercache-full-schema.pdf
+```
+
+## Generated Schema Section
+
+Generated PDFs include section `6 Schema` when the OpenAPI file has `components.schemas`.
+
+The default schema section is compact and review-oriented:
+
+- schema overview
+- top reused fields
+- schema relationships
+- wrapper patterns
+- semantic common-field groups
+- schema-specific fields
+- schema index
+
+Use `--full-schema` only when you need every raw schema table in the PDF.
+
 ## Requirements
 
 - Node.js

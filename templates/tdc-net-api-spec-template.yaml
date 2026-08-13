@@ -39,6 +39,26 @@ x-document:
       title: Attachments
       page: "6"
       level: 1
+    - number: "6"
+      title: Schema
+      page: "7"
+      level: 1
+    - number: "6.1"
+      title: Schema overview
+      page: "7"
+      level: 2
+    - number: "6.2"
+      title: Top reused fields
+      page: "7"
+      level: 2
+    - number: "6.3"
+      title: Schema relationships
+      page: "7"
+      level: 2
+    - number: "6.4"
+      title: Wrapper patterns
+      page: "7"
+      level: 2
   sections:
     - number: "1"
       title: Change log
@@ -76,4 +96,25 @@ x-document:
       title: Attachments
       paragraphs:
         - Replace this section with request and response examples or references.
+    - number: "6"
+      title: Schema
+      paragraphs:
+        - Generated documents summarize OpenAPI components.schemas here, grouping common fields, schema-specific fields, relationships, wrapper patterns, and the schema index.
+      subsections:
+        - number: "6.1"
+          title: Schema overview
+          paragraphs:
+            - Replace this with generated or manually curated schema summary metrics.
+        - number: "6.2"
+          title: Top reused fields
+          paragraphs:
+            - Replace this with the most reused schema fields.
+        - number: "6.3"
+          title: Schema relationships
+          paragraphs:
+            - Replace this with schema-to-schema reference relationships.
+        - number: "6.4"
+          title: Wrapper patterns
+          paragraphs:
+            - Replace this with structural wrappers such as paged, collection, and entity wrappers.
 paths: {}

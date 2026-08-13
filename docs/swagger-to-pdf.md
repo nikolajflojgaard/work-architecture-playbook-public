@@ -62,12 +62,23 @@ SPEC_PROFILE=tdc-net ./scripts/process-spec-drop.sh
 
 The profile is visible in `profiles/tdc-net.json`, and the matching reusable YAML/front-matter template is `templates/tdc-net-api-spec-template.yaml`.
 
+Generate the full raw schema appendix when deep contract inspection is needed:
+
+```bash
+node scripts/spec-to-pdf.mjs \
+  --full-schema \
+  ./spec-drop/yaml/net-ordercache.yaml \
+  ./output/net-ordercache-full-schema.pdf
+```
+
 ## What it does
 
 - reads an OpenAPI YAML/JSON file
 - builds a Redoc HTML page
 - prepends a clean title page
 - prepends structured front-matter pages such as TOC, change log, overview, interaction, specific API, and attachments by default
+- adds section 6 Schema from OpenAPI `components.schemas`, including overview, reused fields, relationships, wrapper patterns, schema-specific fields, and schema index
+- keeps raw per-schema tables optional via `--full-schema`
 - still allows an explicit `x-document` block in the YAML to override that generated front matter
 - prints it to a PDF file
 
