@@ -139,23 +139,29 @@ function renderTable(table) {
   return `<table class="doc-table">${head}${body}</table>`;
 }
 
+function sectionAnchorId(number = '') {
+  return `section-${String(number).replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+}
+
 function renderCodeBlock(code) {
   if (!code) return '';
   return `<pre class="doc-code-block">${escapeHtml(code)}</pre>`;
 }
 
-function renderSubsections(subsections = []) {
-  return subsections
-    .map(
-      (section) => `
-      <div class="doc-subsection">
-        <h3>${escapeHtml(section.number)} ${escapeHtml(section.title)}</h3>
-        ${renderParagraphs(section.paragraphs)}
-        ${renderTable(section.table)}
-        ${renderCodeBlock(section.codeBlock)}
-      </div>`
-    )
-    .join('\n');
+function renderSectionPage(section, options = {}) {
+  const headingTag = options.headingTag || 'h2';
+  const pageClass = options.pageClass || 'section-page';
+  const sectionClass = section.kind ? ` section-page--${escapeHtml(section.kind)}` : '';
+
+  return `
+      <section id="${sectionAnchorId(section.number)}" class="doc-page ${pageClass}${sectionClass}">
+        <div class="doc-page__inner">
+          <${headingTag}>${escapeHtml(section.number)} ${escapeHtml(section.title)}</${headingTag}>
+          ${renderParagraphs(section.paragraphs)}
+          ${renderTable(section.table)}
+          ${renderCodeBlock(section.codeBlock)}
+        </div>
+      </section>`;
 }
 
 function buildDocumentFrontMatter(meta, options) {
@@ -166,7 +172,7 @@ function buildDocumentFrontMatter(meta, options) {
     .map((item) => {
       if (typeof item === 'string') return `<li>${escapeHtml(item)}</li>`;
       const levelClass = item.level === 2 ? 'toc-row toc-row--sub' : 'toc-row toc-row--main';
-      return `<li class="${levelClass}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
+      return `<li class="${levelClass}" data-target="#${sectionAnchorId(item.number)}"><span class="toc-row__label">${escapeHtml(item.number)} ${escapeHtml(item.title)}</span><span class="toc-row__dots"></span><span class="toc-row__page">${escapeHtml(item.page)}</span></li>`;
     })
     .join('');
 
@@ -180,18 +186,12 @@ function buildDocumentFrontMatter(meta, options) {
   <div class="page-break"></div>`;
 
   const sections = (doc.sections || [])
-    .map(
-      (section) => `
-      <section class="doc-page section-page">
-        <div class="doc-page__inner">
-          <h2>${escapeHtml(section.number)} ${escapeHtml(section.title)}</h2>
-          ${renderParagraphs(section.paragraphs)}
-          ${renderTable(section.table)}
-          ${renderCodeBlock(section.codeBlock)}
-          ${renderSubsections(section.subsections)}
-        </div>
-      </section>`
-    )
+    .flatMap((section) => [
+      renderSectionPage(section),
+      ...(section.subsections || []).map((subsection) =>
+        renderSectionPage(subsection, { headingTag: 'h3', pageClass: 'section-page section-page--subsection' })
+      ),
+    ])
     .join('\n<div class="page-break"></div>\n');
 
   return `${tocPage}\n${sections}\n<div class="page-break"></div>`;
@@ -400,6 +400,7 @@ function buildSchemaTable(openapi, rawSchema, number, title) {
   return {
     number,
     title,
+    kind: 'schema',
     paragraphs: [describeSchemaPurpose(schema)].filter(Boolean),
     table: {
       columns: ['Field', 'Type', 'Required', 'Example', 'Description'],
@@ -899,11 +900,11 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
     }
     .doc-page {
       min-height: 100vh;
-      padding: 72px 64px;
+      padding: 62px 56px;
       background: white;
     }
     .doc-page__inner {
-      max-width: 860px;
+      max-width: 940px;
     }
     .doc-page h2 {
       color: var(--ink);
@@ -912,8 +913,8 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
     }
     .doc-page h3 {
       color: var(--ink);
-      font-size: 20px;
-      margin: 26px 0 10px;
+      font-size: 19px;
+      margin: 0 0 12px;
     }
     .doc-page p,
     .doc-page li {
@@ -924,21 +925,78 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
     .doc-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       margin: 12px 0 24px;
-      font-size: 14px;
+      font-size: 12px;
+      line-height: 1.35;
+      border: 1px solid #b8c8dd;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .doc-table th,
     .doc-table td {
-      border: 1px solid #cbd5e1;
-      padding: 10px 12px;
+      border-bottom: 1px solid #d7e0ec;
+      padding: 7px 8px;
       text-align: left;
       vertical-align: top;
       overflow-wrap: anywhere;
     }
     .doc-table th {
-      background: #eef4fb;
+      background: #eaf1f8;
       color: var(--ink);
       font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .doc-table tr:nth-child(even) td {
+      background: #f8fbfe;
+    }
+    .doc-table tr:last-child td {
+      border-bottom: 0;
+    }
+    .section-page--schema {
+      padding: 48px 42px;
+    }
+    .section-page--schema .doc-page__inner {
+      max-width: none;
+    }
+    .section-page--schema h3 {
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--line);
+    }
+    .section-page--schema p {
+      margin: 0 0 10px;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .section-page--schema .doc-table {
+      font-size: 9.5px;
+      line-height: 1.24;
+    }
+    .section-page--schema .doc-table th,
+    .section-page--schema .doc-table td {
+      padding: 4px 5px;
+    }
+    .section-page--schema .doc-table th:nth-child(1),
+    .section-page--schema .doc-table td:nth-child(1) {
+      width: 21%;
+    }
+    .section-page--schema .doc-table th:nth-child(2),
+    .section-page--schema .doc-table td:nth-child(2) {
+      width: 19%;
+    }
+    .section-page--schema .doc-table th:nth-child(3),
+    .section-page--schema .doc-table td:nth-child(3) {
+      width: 8%;
+    }
+    .section-page--schema .doc-table th:nth-child(4),
+    .section-page--schema .doc-table td:nth-child(4) {
+      width: 22%;
+    }
+    .section-page--schema .doc-table th:nth-child(5),
+    .section-page--schema .doc-table td:nth-child(5) {
+      width: 30%;
     }
     .doc-code-block {
       margin: 12px 0 24px;
@@ -968,18 +1026,18 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       display: flex;
       align-items: baseline;
       gap: 10px;
-      margin: 10px 0;
+      margin: 7px 0;
     }
     .toc-row--main {
       font-weight: 600;
     }
     .toc-row--sub {
       padding-left: 22px;
-      font-size: 14px;
+      font-size: 12px;
       color: var(--muted);
     }
     .toc-row__label {
-      white-space: nowrap;
+      max-width: 78%;
     }
     .toc-row__dots {
       flex: 1;
@@ -991,9 +1049,22 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
       text-align: right;
     }
     .page-break { break-after: page; page-break-after: always; }
-    @page { margin: 0; }
+    @page { size: A4; margin: 0; }
   </style>
   <script>
+    function updateTocPageNumbers() {
+      const pageHeight = window.innerHeight || 1123;
+
+      for (const row of document.querySelectorAll('.toc-row[data-target]')) {
+        const target = document.querySelector(row.dataset.target);
+        const pageCell = row.querySelector('.toc-row__page');
+        if (!target || !pageCell || !pageHeight) continue;
+
+        const page = Math.max(1, Math.floor(target.offsetTop / pageHeight) + 1);
+        pageCell.textContent = String(page);
+      }
+    }
+
     function removeRedocSampleSections() {
       const headings = document.querySelectorAll('h3, h4, h5');
       for (const heading of headings) {
@@ -1008,10 +1079,17 @@ function buildWrapperHtml(bodyHtml, meta, options, logoUri) {
 
     document.addEventListener('DOMContentLoaded', () => {
       removeRedocSampleSections();
-      setTimeout(removeRedocSampleSections, 250);
+      updateTocPageNumbers();
+      setTimeout(() => {
+        removeRedocSampleSections();
+        updateTocPageNumbers();
+      }, 250);
     });
 
-    window.addEventListener('beforeprint', removeRedocSampleSections);
+    window.addEventListener('beforeprint', () => {
+      removeRedocSampleSections();
+      updateTocPageNumbers();
+    });
   </script>
 </head>
 <body>
@@ -1065,6 +1143,7 @@ async function main() {
       '--headless=new',
       '--disable-gpu',
       '--no-first-run',
+      '--window-size=794,1123',
       '--allow-file-access-from-files',
       '--enable-local-file-accesses',
       '--run-all-compositor-stages-before-draw',

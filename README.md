@@ -106,6 +106,7 @@ The default schema section mirrors OpenAPI `components.schemas` directly:
 - one subsection per component schema
 - one table per schema
 - columns for field, type, required, example, and description
+- table of contents entries point to each schema subsection
 
 The `--full-schema` flag is retained for compatibility; schema rendering is direct by default.
 
