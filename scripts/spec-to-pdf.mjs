@@ -441,6 +441,21 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       schema.rows.map((row) => row.field).join(', ') || '(value)',
     ]);
 
+  const schemaFieldRows = schemaDetails
+    .flatMap((schema) =>
+      schema.rows.map((row) => [
+        schema.name,
+        schema.family,
+        schema.category,
+        row.field,
+        row.type,
+        row.required,
+        row.example,
+        row.description,
+      ])
+    )
+    .sort(compareSchemaFieldRows);
+
   const topFieldRows = [...fieldGroups.values()]
     .map((group) => {
       const usedBy = [...new Set([...group.requiredIn.keys(), ...group.optionalIn.keys()])];
@@ -464,6 +479,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
         columns: ['Metric', 'Value'],
         rows: [
           ['Component schemas', String(schemaDetails.length)],
+          ['Component schema fields', String(schemaFieldRows.length)],
           ['Common field definitions', String(commonRows.length)],
           ['Schema-specific field definitions', String(specificRows.length)],
           ['Wrapper schemas', String(wrapperRows.length)],
@@ -473,6 +489,15 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
     },
     {
       number: '6.2',
+      title: 'Component field inventory',
+      paragraphs: ['All fields extracted directly from OpenAPI components.schemas before grouping. This is the source inventory for the summarized schema views below.'],
+      table: {
+        columns: ['Schema', 'Family', 'Category', 'Field', 'Type', 'Required', 'Example', 'Description'],
+        rows: schemaFieldRows,
+      },
+    },
+    {
+      number: '6.3',
       title: 'Top reused fields',
       paragraphs: ['Most reused fields across the component schemas.'],
       table: {
@@ -481,7 +506,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       },
     },
     {
-      number: '6.3',
+      number: '6.4',
       title: 'Schema relationships',
       paragraphs: relationshipRows.length
         ? ['Reference relationships extracted from component schema properties.']
@@ -492,7 +517,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       },
     },
     {
-      number: '6.4',
+      number: '6.5',
       title: 'Wrapper patterns',
       paragraphs: wrapperRows.length
         ? ['Structural wrapper schemas are collapsed here instead of repeated as full object tables.']
@@ -502,9 +527,9 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
         rows: wrapperRows,
       },
     },
-    ...buildCommonFieldCategorySections(commonRowsByCategory, 5),
+    ...buildCommonFieldCategorySections(commonRowsByCategory, 6),
     {
-      number: `6.${5 + commonRowsByCategory.size}`,
+      number: `6.${6 + commonRowsByCategory.size}`,
       title: 'Schema-specific fields',
       paragraphs: specificRows.length
         ? ['Fields that only appear in one schema family are listed here as the schema-specific differences.']
@@ -515,7 +540,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
       },
     },
     {
-      number: `6.${6 + commonRowsByCategory.size}`,
+      number: `6.${7 + commonRowsByCategory.size}`,
       title: 'Schema index',
       paragraphs: ['Index of component schemas included in this OpenAPI document.'],
       table: {
@@ -526,7 +551,7 @@ function buildGenericSchemaSections(openapi, schemaEntries, options = {}) {
   ];
 
   if (options.fullSchema) {
-    const startIndex = 7 + commonRowsByCategory.size;
+    const startIndex = 8 + commonRowsByCategory.size;
     sections.push(
       ...schemaDetails
         .sort(compareSchemaDetails)
@@ -727,6 +752,15 @@ function compareSchemaSummaryRows(left, right) {
     left[1].localeCompare(right[1]) ||
     schemaCategoryRank(left[2]) - schemaCategoryRank(right[2]) ||
     left[0].localeCompare(right[0])
+  );
+}
+
+function compareSchemaFieldRows(left, right) {
+  return (
+    schemaCategoryRank(left[2]) - schemaCategoryRank(right[2]) ||
+    left[1].localeCompare(right[1]) ||
+    left[0].localeCompare(right[0]) ||
+    left[3].localeCompare(right[3])
   );
 }
 

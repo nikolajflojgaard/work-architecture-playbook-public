@@ -48,14 +48,18 @@ x-document:
       page: "7"
       level: 2
     - number: "6.2"
-      title: Top reused fields
+      title: Component field inventory
       page: "7"
       level: 2
     - number: "6.3"
-      title: Schema relationships
+      title: Top reused fields
       page: "7"
       level: 2
     - number: "6.4"
+      title: Schema relationships
+      page: "7"
+      level: 2
+    - number: "6.5"
       title: Wrapper patterns
       page: "7"
       level: 2
@@ -99,21 +103,25 @@ x-document:
     - number: "6"
       title: Schema
       paragraphs:
-        - Generated documents summarize OpenAPI components.schemas here, grouping common fields, representative example values, schema-specific fields, relationships, wrapper patterns, and the schema index.
+        - Generated documents summarize OpenAPI components.schemas here, preserving the complete component field inventory before grouping common fields, representative example values, schema-specific fields, relationships, wrapper patterns, and the schema index.
       subsections:
         - number: "6.1"
           title: Schema overview
           paragraphs:
             - Replace this with generated or manually curated schema summary metrics.
         - number: "6.2"
+          title: Component field inventory
+          paragraphs:
+            - Replace this with all fields extracted from OpenAPI components.schemas, including representative example values.
+        - number: "6.3"
           title: Top reused fields
           paragraphs:
             - Replace this with the most reused schema fields and representative example values.
-        - number: "6.3"
+        - number: "6.4"
           title: Schema relationships
           paragraphs:
             - Replace this with schema-to-schema reference relationships.
-        - number: "6.4"
+        - number: "6.5"
           title: Wrapper patterns
           paragraphs:
             - Replace this with structural wrappers such as paged, collection, and entity wrappers.

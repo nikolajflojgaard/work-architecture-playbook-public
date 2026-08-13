@@ -101,9 +101,10 @@ npm run spec:pdf -- --full-schema ./spec-drop/yaml/net-ordercache.yaml ./output/
 
 Generated PDFs include section `6 Schema` when the OpenAPI file has `components.schemas`.
 
-The default schema section is compact and review-oriented:
+The default schema section is source-first and review-oriented:
 
 - schema overview
+- complete component field inventory from `components.schemas`
 - top reused fields with representative examples
 - schema relationships
 - wrapper patterns
