@@ -77,8 +77,8 @@ node scripts/spec-to-pdf.mjs \
 - builds a Redoc HTML page
 - prepends a clean title page
 - prepends structured front-matter pages such as TOC, change log, overview, interaction, specific API, and attachments by default
-- adds section 6 Schema from OpenAPI `components.schemas`, including a complete component field inventory, reused fields with representative examples, relationships, wrapper patterns, schema-specific fields, and schema index
-- keeps raw per-schema tables optional via `--full-schema`
+- adds section 6 Schema from OpenAPI `components.schemas`, with one table per component schema and example values when supplied
+- keeps `--full-schema` accepted for compatibility; schema rendering is direct by default
 - still allows an explicit `x-document` block in the YAML to override that generated front matter
 - prints it to a PDF file
 
