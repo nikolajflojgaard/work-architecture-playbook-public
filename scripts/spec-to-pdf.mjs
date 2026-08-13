@@ -152,6 +152,19 @@ function renderSectionPage(section, options = {}) {
   const headingTag = options.headingTag || 'h2';
   const pageClass = options.pageClass || 'section-page';
   const sectionClass = section.kind ? ` section-page--${escapeHtml(section.kind)}` : '';
+  const inlineSubsections = options.includeSubsections
+    ? (section.subsections || [])
+        .map(
+          (subsection) => `
+          <div id="${sectionAnchorId(subsection.number)}" class="doc-subsection">
+            <h3>${escapeHtml(subsection.number)} ${escapeHtml(subsection.title)}</h3>
+            ${renderParagraphs(subsection.paragraphs)}
+            ${renderTable(subsection.table)}
+            ${renderCodeBlock(subsection.codeBlock)}
+          </div>`
+        )
+        .join('\n')
+    : '';
 
   return `
       <section id="${sectionAnchorId(section.number)}" class="doc-page ${pageClass}${sectionClass}">
@@ -160,6 +173,7 @@ function renderSectionPage(section, options = {}) {
           ${renderParagraphs(section.paragraphs)}
           ${renderTable(section.table)}
           ${renderCodeBlock(section.codeBlock)}
+          ${inlineSubsections}
         </div>
       </section>`;
 }
@@ -186,12 +200,18 @@ function buildDocumentFrontMatter(meta, options) {
   <div class="page-break"></div>`;
 
   const sections = (doc.sections || [])
-    .flatMap((section) => [
-      renderSectionPage(section),
-      ...(section.subsections || []).map((subsection) =>
-        renderSectionPage(subsection, { headingTag: 'h3', pageClass: 'section-page section-page--subsection' })
-      ),
-    ])
+    .flatMap((section) => {
+      if (section.number === '6') {
+        return [
+          renderSectionPage(section),
+          ...(section.subsections || []).map((subsection) =>
+            renderSectionPage(subsection, { headingTag: 'h3', pageClass: 'section-page section-page--subsection' })
+          ),
+        ];
+      }
+
+      return [renderSectionPage(section, { includeSubsections: true })];
+    })
     .join('\n<div class="page-break"></div>\n');
 
   return `${tocPage}\n${sections}\n<div class="page-break"></div>`;
